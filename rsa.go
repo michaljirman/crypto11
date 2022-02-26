@@ -335,14 +335,20 @@ func (c *Context) ImportRSAKeyPairWithLabel(id []byte, label []byte, privateKey 
 		return err
 	}
 
-	template, err := NewAttributeSetWithIDAndLabel(id, label)
+	privateKeyTemplate, err := NewAttributeSetWithIDAndLabel(id, label)
 	if err != nil {
 		return err
 	}
-	return c.ImportRSAKeyPairWithAttributes(template, privateKey, publicKey)
+
+	publicKeyTemplate, err := NewAttributeSetWithIDAndLabel(id, label)
+	if err != nil {
+		return err
+	}
+
+	return c.ImportRSAKeyPairWithAttributes(privateKeyTemplate, publicKeyTemplate, privateKey, publicKey)
 }
 
-func (c *Context) ImportRSAKeyPairWithAttributes(template AttributeSet, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) error {
+func (c *Context) ImportRSAKeyPairWithAttributes(privateKeyTemplate AttributeSet, publicKeyTemplate AttributeSet, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) error {
 	if c.closed.Get() {
 		return errClosed
 	}
@@ -355,7 +361,6 @@ func (c *Context) ImportRSAKeyPairWithAttributes(template AttributeSet, privateK
 		return errors.New("publicKey cannot be nil")
 	}
 
-	publicKeyTemplate := template
 	publicKeyTemplate.AddIfNotPresent([]*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
@@ -368,7 +373,6 @@ func (c *Context) ImportRSAKeyPairWithAttributes(template AttributeSet, privateK
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, publicKey.N.Bytes()),
 	})
 
-	privateKeyTemplate := template
 	privateKeyTemplate.AddIfNotPresent([]*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
