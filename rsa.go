@@ -323,3 +323,83 @@ func (priv *pkcs11PrivateKeyRSA) Sign(rand io.Reader, digest []byte, opts crypto
 
 	return signature, err
 }
+
+func (c *Context) ImportRSAKeyPairWithLabel(id []byte, label []byte, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) error {
+	if c.closed.Get() {
+		return errClosed
+	}
+	if err := notNilBytes(id, "id"); err != nil {
+		return err
+	}
+	if err := notNilBytes(label, "label"); err != nil {
+		return err
+	}
+
+	template, err := NewAttributeSetWithIDAndLabel(id, label)
+	if err != nil {
+		return err
+	}
+	return c.ImportRSAKeyPairWithAttributes(template, privateKey, publicKey)
+}
+
+func (c *Context) ImportRSAKeyPairWithAttributes(template AttributeSet, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) error {
+	if c.closed.Get() {
+		return errClosed
+	}
+
+	if privateKey == nil {
+		return errors.New("privateKey cannot be nil")
+	}
+
+	if publicKey == nil {
+		return errors.New("publicKey cannot be nil")
+	}
+
+	publicKeyTemplate := template
+	publicKeyTemplate.AddIfNotPresent([]*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_MODIFIABLE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
+		pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
+		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
+		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, publicKey.N.BitLen()),
+		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, publicKey.N.Bytes()),
+	})
+
+	privateKeyTemplate := template
+	privateKeyTemplate.AddIfNotPresent([]*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
+		//pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, privateKey.N.BitLen()),
+		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, privateKey.N.Bytes()),
+		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
+		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE_EXPONENT, privateKey.D.Bytes()),
+		pkcs11.NewAttribute(pkcs11.CKA_PRIME_1, privateKey.Primes[0]),
+		pkcs11.NewAttribute(pkcs11.CKA_PRIME_2, privateKey.Primes[1]),
+		pkcs11.NewAttribute(pkcs11.CKA_EXPONENT_1, privateKey.Precomputed.Dp.Bytes()),
+		pkcs11.NewAttribute(pkcs11.CKA_EXPONENT_2, privateKey.Precomputed.Dq.Bytes()),
+		pkcs11.NewAttribute(pkcs11.CKA_COEFFICIENT, privateKey.Precomputed.Qinv.Bytes()),
+	})
+
+	err := c.withSession(func(session *pkcs11Session) error {
+		_, err := session.ctx.CreateObject(session.handle, privateKeyTemplate.ToSlice())
+		if err != nil {
+			return err
+		}
+		_, err = session.ctx.CreateObject(session.handle, publicKeyTemplate.ToSlice())
+		if err != nil {
+			return err
+		}
+
+		return err
+	})
+
+	return err
+}
