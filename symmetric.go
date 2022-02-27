@@ -364,3 +364,54 @@ func (c *Context) GenerateSecretKeyWithAttributes(template AttributeSet, bits in
 func (key *SecretKey) Delete() error {
 	return key.pkcs11Object.Delete()
 }
+
+func (c *Context) ImportSecretKeyWithLabel(id []byte, label []byte, key []byte, cipher *SymmetricCipher) error {
+	if c.closed.Get() {
+		return errClosed
+	}
+
+	template, err := NewAttributeSetWithIDAndLabel(id, label)
+	if err != nil {
+		return err
+	}
+
+	return c.ImportSecretKeyWithAttributes(template, key, cipher)
+}
+
+func (c *Context) ImportSecretKeyWithAttributes(template AttributeSet, key []byte, cipher *SymmetricCipher) error {
+	if c.closed.Get() {
+		return errClosed
+	}
+
+	if key == nil {
+		return errors.New("privateKey cannot be nil")
+	}
+
+	template.AddIfNotPresent([]*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_AES),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_MODIFIABLE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
+		pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
+		pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),
+		pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, cipher.Encrypt),
+		pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, cipher.Encrypt),
+		pkcs11.NewAttribute(pkcs11.CKA_SIGN, cipher.MAC),
+		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, cipher.MAC),
+		pkcs11.NewAttribute(pkcs11.CKA_VALUE, key),
+		pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, len(key)),
+	})
+
+	err := c.withSession(func(session *pkcs11Session) error {
+		_, err := session.ctx.CreateObject(session.handle, template.ToSlice())
+		if err != nil {
+			return err
+		}
+
+		return err
+	})
+
+	return err
+}
