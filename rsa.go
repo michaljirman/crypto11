@@ -382,7 +382,7 @@ func (c *Context) ImportRSAKeyPairWithAttributes(privateKeyTemplate AttributeSet
 		pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, false),
-		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
+		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, privateKey.N.Bytes()),
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
 		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE_EXPONENT, privateKey.D.Bytes()),
