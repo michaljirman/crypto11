@@ -611,3 +611,84 @@ func (c *Context) GetPubAttribute(key interface{}, attribute AttributeType) (a *
 
 	return set[attribute], nil
 }
+
+// WrapKey wraps a key using a wrapping key
+func (c *Context) WrapKey(m []*pkcs11.Mechanism,
+	wrappingKeyId []byte, wrappingKeyLabel []byte, keyId, keyLabel []byte) (wrappedKey []byte, err error) {
+	err = c.withSession(func(session *pkcs11Session) error {
+		wrappingKeyHandle, err := findKey(session, wrappingKeyId, wrappingKeyLabel, nil, nil)
+		if err != nil {
+			return err
+		}
+
+		if wrappingKeyHandle == nil {
+			return nil
+		}
+
+		privKeyHandle, err := findKey(session, keyId, keyLabel, nil, nil)
+		if err != nil {
+			return err
+		}
+
+		if privKeyHandle == nil {
+			return nil
+		}
+
+		wrappedKey, err = session.ctx.WrapKey(
+			session.handle,
+			m,
+			*wrappingKeyHandle,
+			*privKeyHandle)
+		if err != nil {
+			return err
+		}
+
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return wrappedKey, err
+}
+
+//
+//// todo - wip
+//func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKey *SecretKey, wrappedKey []byte) error {
+//	a := []*pkcs11.Attribute{
+//		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+//		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+//		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+//		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+//		pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
+//		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+//		pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, false),
+//		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
+//		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, privateKey.N.Bytes()),
+//		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
+//		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE_EXPONENT, privateKey.D.Bytes()),
+//		pkcs11.NewAttribute(pkcs11.CKA_PRIME_1, privateKey.Primes[0].Bytes()),
+//		pkcs11.NewAttribute(pkcs11.CKA_PRIME_2, privateKey.Primes[1].Bytes()),
+//		pkcs11.NewAttribute(pkcs11.CKA_EXPONENT_1, privateKey.Precomputed.Dp.Bytes()),
+//		pkcs11.NewAttribute(pkcs11.CKA_EXPONENT_2, privateKey.Precomputed.Dq.Bytes()),
+//		pkcs11.NewAttribute(pkcs11.CKA_COEFFICIENT, privateKey.Precomputed.Qinv.Bytes()),
+//	}
+//
+//	err := c.withSession(func(session *pkcs11Session) error {
+//		// UnwrapKey unwraps (decrypts) a wrapped key, creating a new key object.
+//		_, err := session.ctx.UnwrapKey(
+//			session.handle,
+//			m,
+//			unwrappingKey.handle,
+//			wrappedKey,
+//			a)
+//		if err != nil {
+//			return err
+//		}
+//
+//		return err
+//	})
+//
+//	return err
+//}
