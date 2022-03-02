@@ -616,7 +616,7 @@ func (c *Context) GetPubAttribute(key interface{}, attribute AttributeType) (a *
 func (c *Context) WrapKey(m []*pkcs11.Mechanism,
 	wrappingKeyId []byte, wrappingKeyLabel []byte, keyId, keyLabel []byte) (wrappedKey []byte, err error) {
 	err = c.withSession(func(session *pkcs11Session) error {
-		wrappingKeyHandle, err := findKey(session, wrappingKeyId, wrappingKeyLabel, nil, nil)
+		wrappingKeyHandle, err := findKey(session, wrappingKeyId, wrappingKeyLabel, uintPtr(pkcs11.CKO_SECRET_KEY), nil)
 		if err != nil {
 			return err
 		}
@@ -625,7 +625,7 @@ func (c *Context) WrapKey(m []*pkcs11.Mechanism,
 			return nil
 		}
 
-		privKeyHandle, err := findKey(session, keyId, keyLabel, nil, nil)
+		privKeyHandle, err := findKey(session, keyId, keyLabel, uintPtr(pkcs11.CKO_PRIVATE_KEY), nil)
 		if err != nil {
 			return err
 		}
