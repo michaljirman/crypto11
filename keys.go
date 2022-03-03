@@ -694,3 +694,24 @@ func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKeyId []byte, unwra
 
 	return err
 }
+
+//DeleteAllKeys removes all keys matching id and label filter
+func (c *Context) DeleteAllKeys(id []byte, label []byte) error {
+	err := c.withSession(func(session *pkcs11Session) error {
+		keyHandles, err := findKeys(session, id, label, nil, nil)
+		if err != nil {
+			return err
+		}
+
+		if len(keyHandles) == 0 {
+			return nil
+		}
+
+		if keyHandles == nil {
+			return nil
+		}
+
+		return err
+	})
+	return err
+}
