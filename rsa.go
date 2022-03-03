@@ -324,7 +324,7 @@ func (priv *pkcs11PrivateKeyRSA) Sign(rand io.Reader, digest []byte, opts crypto
 	return signature, err
 }
 
-func (c *Context) ImportRSAKeyPairWithLabel(id []byte, label []byte, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) error {
+func (c *Context) ImportPublicKeyWithLabel(id []byte, label []byte, publicKey *rsa.PublicKey) error {
 	if c.closed.Get() {
 		return errClosed
 	}
@@ -335,26 +335,17 @@ func (c *Context) ImportRSAKeyPairWithLabel(id []byte, label []byte, privateKey 
 		return err
 	}
 
-	privateKeyTemplate, err := NewAttributeSetWithIDAndLabel(id, label)
-	if err != nil {
-		return err
-	}
-
 	publicKeyTemplate, err := NewAttributeSetWithIDAndLabel(id, label)
 	if err != nil {
 		return err
 	}
 
-	return c.ImportRSAKeyPairWithAttributes(privateKeyTemplate, publicKeyTemplate, privateKey, publicKey)
+	return c.ImportPublicKeyWithAttributes(publicKeyTemplate, publicKey)
 }
 
-func (c *Context) ImportRSAKeyPairWithAttributes(privateKeyTemplate AttributeSet, publicKeyTemplate AttributeSet, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) error {
+func (c *Context) ImportPublicKeyWithAttributes(publicKeyTemplate AttributeSet, publicKey *rsa.PublicKey) error {
 	if c.closed.Get() {
 		return errClosed
-	}
-
-	if privateKey == nil {
-		return errors.New("privateKey cannot be nil")
 	}
 
 	if publicKey == nil {
@@ -373,6 +364,46 @@ func (c *Context) ImportRSAKeyPairWithAttributes(privateKeyTemplate AttributeSet
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, publicKey.N.BitLen()),
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, publicKey.N.Bytes()),
 	})
+
+	err := c.withSession(func(session *pkcs11Session) error {
+		_, err := session.ctx.CreateObject(session.handle, publicKeyTemplate.ToSlice())
+		if err != nil {
+			return err
+		}
+
+		return err
+	})
+
+	return err
+}
+
+func (c *Context) ImportPrivateKeyWithLabel(id []byte, label []byte, privateKey *rsa.PrivateKey) error {
+	if c.closed.Get() {
+		return errClosed
+	}
+	if err := notNilBytes(id, "id"); err != nil {
+		return err
+	}
+	if err := notNilBytes(label, "label"); err != nil {
+		return err
+	}
+
+	privateKeyTemplate, err := NewAttributeSetWithIDAndLabel(id, label)
+	if err != nil {
+		return err
+	}
+
+	return c.ImportPrivateKeyWithAttributes(privateKeyTemplate, privateKey)
+}
+
+func (c *Context) ImportPrivateKeyWithAttributes(privateKeyTemplate AttributeSet, privateKey *rsa.PrivateKey) error {
+	if c.closed.Get() {
+		return errClosed
+	}
+
+	if privateKey == nil {
+		return errors.New("privateKey cannot be nil")
+	}
 
 	privateKeyTemplate.AddIfNotPresent([]*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
@@ -395,10 +426,6 @@ func (c *Context) ImportRSAKeyPairWithAttributes(privateKeyTemplate AttributeSet
 
 	err := c.withSession(func(session *pkcs11Session) error {
 		_, err := session.ctx.CreateObject(session.handle, privateKeyTemplate.ToSlice())
-		if err != nil {
-			return err
-		}
-		_, err = session.ctx.CreateObject(session.handle, publicKeyTemplate.ToSlice())
 		if err != nil {
 			return err
 		}
