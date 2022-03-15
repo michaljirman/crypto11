@@ -615,6 +615,10 @@ func (c *Context) GetPubAttribute(key interface{}, attribute AttributeType) (a *
 // WrapKey wraps a key using a wrapping key
 func (c *Context) WrapKey(m []*pkcs11.Mechanism,
 	wrappingKeyId []byte, wrappingKeyLabel []byte, keyId, keyLabel []byte) (wrappedKey []byte, err error) {
+	if c.closed.Get() {
+		return nil, errClosed
+	}
+
 	err = c.withSession(func(session *pkcs11Session) error {
 		wrappingKeyHandle, err := findKey(session, wrappingKeyId, wrappingKeyLabel, uintPtr(pkcs11.CKO_SECRET_KEY), nil)
 		if err != nil {
@@ -655,6 +659,9 @@ func (c *Context) WrapKey(m []*pkcs11.Mechanism,
 
 func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKeyId []byte, unwrappingKeyLabel []byte, wrappedKey []byte,
 	importedKeyId, importedKeyLabel []byte) error {
+	if c.closed.Get() {
+		return errClosed
+	}
 
 	err := c.withSession(func(session *pkcs11Session) error {
 		importedPrivateKeyTemplate := []*pkcs11.Attribute{
@@ -697,6 +704,10 @@ func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKeyId []byte, unwra
 
 //DeleteAllKeys removes all keys matching id and label filter
 func (c *Context) DeleteAllKeys(id []byte, label []byte) error {
+	if c.closed.Get() {
+		return errClosed
+	}
+
 	err := c.withSession(func(session *pkcs11Session) error {
 		keyHandles, err := findKeys(session, id, label, nil, nil)
 		if err != nil {

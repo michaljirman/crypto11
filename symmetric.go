@@ -401,7 +401,7 @@ func (c *Context) ImportSecretKeyWithAttributes(template AttributeSet, key []byt
 		pkcs11.NewAttribute(pkcs11.CKA_SIGN, cipher.MAC),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, cipher.MAC),
 		pkcs11.NewAttribute(pkcs11.CKA_VALUE, key),
-		pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, len(key)),
+		//pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, len(key)),
 	})
 
 	err := c.withSession(func(session *pkcs11Session) error {
