@@ -24,6 +24,7 @@ package crypto11
 import (
 	"crypto"
 	"crypto/x509"
+
 	"github.com/miekg/pkcs11"
 	"github.com/pkg/errors"
 )
@@ -720,6 +721,11 @@ func (c *Context) DeleteAllKeys(id []byte, label []byte) error {
 
 		if keyHandles == nil {
 			return nil
+		}
+
+		for _, keyHandle := range keyHandles {
+			err := session.ctx.DestroyObject(session.handle, keyHandle)
+			return errors.WithMessage(err, "failed to destroy key")
 		}
 
 		return err
