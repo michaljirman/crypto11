@@ -615,7 +615,7 @@ func (c *Context) GetPubAttribute(key interface{}, attribute AttributeType) (a *
 
 // WrapKey wraps a key using a wrapping key
 func (c *Context) WrapKey(m []*pkcs11.Mechanism,
-	wrappingKeyId []byte, wrappingKeyLabel []byte, keyId, keyLabel []byte, keyClass *uint) (wrappedKey []byte, err error) {
+	wrappingKeyId []byte, wrappingKeyLabel []byte, keyId, keyLabel []byte, keyClass uint) (wrappedKey []byte, err error) {
 	if c.closed.Get() {
 		return nil, errClosed
 	}
@@ -631,7 +631,7 @@ func (c *Context) WrapKey(m []*pkcs11.Mechanism,
 		}
 
 		//keyHandle, err := findKey(session, keyId, keyLabel, uintPtr(pkcs11.CKO_PRIVATE_KEY), nil)
-		keyHandle, err := findKey(session, keyId, keyLabel, keyClass, nil)
+		keyHandle, err := findKey(session, keyId, keyLabel, &keyClass, nil)
 		if err != nil {
 			return err
 		}
@@ -659,7 +659,7 @@ func (c *Context) WrapKey(m []*pkcs11.Mechanism,
 	return wrappedKey, err
 }
 
-func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKeyId []byte, unwrappingKeyLabel []byte, unwrappingKeyClass *uint,
+func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKeyId []byte, unwrappingKeyLabel []byte, unwrappingKeyClass uint,
 	wrappedKey []byte, a []*Attribute) error {
 	if c.closed.Get() {
 		return errClosed
@@ -678,7 +678,7 @@ func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKeyId []byte, unwra
 		//	pkcs11.NewAttribute(pkcs11.CKA_ID, importedKeyId),
 		//}
 
-		unwrappingKeyHandle, err := findKey(session, unwrappingKeyId, unwrappingKeyLabel, unwrappingKeyClass, nil)
+		unwrappingKeyHandle, err := findKey(session, unwrappingKeyId, unwrappingKeyLabel, &unwrappingKeyClass, nil)
 		//unwrappingKeyHandle, err := findKey(session, unwrappingKeyId, unwrappingKeyLabel, uintPtr(pkcs11.CKO_SECRET_KEY), nil)
 		if err != nil {
 			return err
