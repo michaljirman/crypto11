@@ -615,7 +615,7 @@ func (c *Context) GetPubAttribute(key interface{}, attribute AttributeType) (a *
 
 // WrapKey wraps a key using a wrapping key
 func (c *Context) WrapKey(m []*pkcs11.Mechanism,
-	wrappingKeyId []byte, wrappingKeyLabel []byte, keyId, keyLabel []byte) (wrappedKey []byte, err error) {
+	wrappingKeyId []byte, wrappingKeyLabel []byte, keyId, keyLabel []byte, keyClass *uint) (wrappedKey []byte, err error) {
 	if c.closed.Get() {
 		return nil, errClosed
 	}
@@ -630,12 +630,13 @@ func (c *Context) WrapKey(m []*pkcs11.Mechanism,
 			return nil
 		}
 
-		privKeyHandle, err := findKey(session, keyId, keyLabel, uintPtr(pkcs11.CKO_PRIVATE_KEY), nil)
+		//keyHandle, err := findKey(session, keyId, keyLabel, uintPtr(pkcs11.CKO_PRIVATE_KEY), nil)
+		keyHandle, err := findKey(session, keyId, keyLabel, keyClass, nil)
 		if err != nil {
 			return err
 		}
 
-		if privKeyHandle == nil {
+		if keyHandle == nil {
 			return nil
 		}
 
@@ -643,7 +644,7 @@ func (c *Context) WrapKey(m []*pkcs11.Mechanism,
 			session.handle,
 			m,
 			*wrappingKeyHandle,
-			*privKeyHandle)
+			*keyHandle)
 		if err != nil {
 			return err
 		}
@@ -658,26 +659,27 @@ func (c *Context) WrapKey(m []*pkcs11.Mechanism,
 	return wrappedKey, err
 }
 
-func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKeyId []byte, unwrappingKeyLabel []byte, wrappedKey []byte,
-	importedKeyId, importedKeyLabel []byte) error {
+func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKeyId []byte, unwrappingKeyLabel []byte, unwrappingKeyClass *uint,
+	wrappedKey []byte, a []*Attribute) error {
 	if c.closed.Get() {
 		return errClosed
 	}
 
 	err := c.withSession(func(session *pkcs11Session) error {
-		importedPrivateKeyTemplate := []*pkcs11.Attribute{
-			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
-			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
-			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-			pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-			pkcs11.NewAttribute(pkcs11.CKA_LABEL, importedKeyLabel),
-			pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
-			pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, false),
-			pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
-			pkcs11.NewAttribute(pkcs11.CKA_ID, importedKeyId),
-		}
+		//importedPrivateKeyTemplate := []*pkcs11.Attribute{
+		//	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+		//	pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		//	pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		//	pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+		//	pkcs11.NewAttribute(pkcs11.CKA_LABEL, importedKeyLabel),
+		//	pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+		//	pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, false),
+		//	pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
+		//	pkcs11.NewAttribute(pkcs11.CKA_ID, importedKeyId),
+		//}
 
-		unwrappingKeyHandle, err := findKey(session, unwrappingKeyId, unwrappingKeyLabel, uintPtr(pkcs11.CKO_SECRET_KEY), nil)
+		unwrappingKeyHandle, err := findKey(session, unwrappingKeyId, unwrappingKeyLabel, unwrappingKeyClass, nil)
+		//unwrappingKeyHandle, err := findKey(session, unwrappingKeyId, unwrappingKeyLabel, uintPtr(pkcs11.CKO_SECRET_KEY), nil)
 		if err != nil {
 			return err
 		}
@@ -692,7 +694,7 @@ func (c *Context) UnwrapKey(m []*pkcs11.Mechanism, unwrappingKeyId []byte, unwra
 			m,
 			*unwrappingKeyHandle,
 			wrappedKey,
-			importedPrivateKeyTemplate)
+			a)
 		if err != nil {
 			return err
 		}
