@@ -360,8 +360,9 @@ func (c *Context) ImportPublicKeyWithAttributes(publicKeyTemplate AttributeSet, 
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
 		pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
+		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
-		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, publicKey.N.BitLen()),
+		//pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, publicKey.N.BitLen()),
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, publicKey.N.Bytes()),
 	})
 

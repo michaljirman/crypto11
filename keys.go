@@ -24,6 +24,7 @@ package crypto11
 import (
 	"crypto"
 	"crypto/x509"
+	`log`
 
 	"github.com/miekg/pkcs11"
 	"github.com/pkg/errors"
@@ -68,6 +69,8 @@ func findKeysWithAttributes(session *pkcs11Session, template []*pkcs11.Attribute
 // Find key objects.  For asymmetric keys this only finds one half so
 // callers will call it twice. Returns nil if the key does not exist on the token.
 func findKeys(session *pkcs11Session, id []byte, label []byte, keyclass *uint, keytype *uint) (handles []pkcs11.ObjectHandle, err error) {
+	log.Printf("findKeys: %s, %s\n", string(id), string(label))
+
 	var template []*pkcs11.Attribute
 
 	if keyclass != nil {
@@ -99,6 +102,7 @@ func findKey(session *pkcs11Session, id []byte, label []byte, keyclass *uint, ke
 	}
 
 	if len(handles) == 0 {
+		log.Println("findKeys: no handles found")
 		return nil, nil
 	}
 	return &handles[0], nil
@@ -615,13 +619,14 @@ func (c *Context) GetPubAttribute(key interface{}, attribute AttributeType) (a *
 
 // WrapKey wraps a key using a wrapping key
 func (c *Context) WrapKey(m []*pkcs11.Mechanism,
-	wrappingKeyId []byte, wrappingKeyLabel []byte, keyId, keyLabel []byte, keyClass uint) (wrappedKey []byte, err error) {
+	wrappingKeyId []byte, wrappingKeyLabel []byte, wrappingKeyClass uint, keyId, keyLabel []byte, keyClass uint) (wrappedKey []byte, err error) {
 	if c.closed.Get() {
 		return nil, errClosed
 	}
 
 	err = c.withSession(func(session *pkcs11Session) error {
-		wrappingKeyHandle, err := findKey(session, wrappingKeyId, wrappingKeyLabel, uintPtr(pkcs11.CKO_SECRET_KEY), nil)
+		wrappingKeyHandle, err := findKey(session, wrappingKeyId, wrappingKeyLabel, &wrappingKeyClass, nil)
+		//wrappingKeyHandle, err := findKey(session, wrappingKeyId, wrappingKeyLabel, uintPtr(pkcs11.CKO_SECRET_KEY), nil)
 		if err != nil {
 			return err
 		}
